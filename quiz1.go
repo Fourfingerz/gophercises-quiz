@@ -21,8 +21,6 @@ func main() {
 	flag.Parse()
 
 	quiz := convertCsvToQuiz(fileDir)
-
-
 	giveQuiz(quiz, *timeLimit)
 }
 
