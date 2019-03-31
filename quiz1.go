@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"encoding/csv"
 	"flag"
 	"fmt"
 	"os"
-	"strings"
+	"time"
 )
 
 var fileDir string
@@ -17,11 +16,14 @@ type problem struct {
 }
 
 func main() {
+	timeLimit := flag.Int("limit", 30, "time limit for the quiz in seconds")
 	flag.StringVar(&fileDir, "f", "problems.csv", "quiz dir")
 	flag.Parse()
+
 	quiz := convertCsvToQuiz(fileDir)
-	questionsCorrect, quizLength := giveQuiz(quiz)
-	fmt.Println(`You got`, questionsCorrect, `questions out of`, quizLength, `correct.`)
+
+
+	giveQuiz(quiz, *timeLimit)
 }
 
 func convertCsvToQuiz(filename string) []problem {
@@ -49,24 +51,30 @@ func convertCsvToQuiz(filename string) []problem {
 	return quiz
 }
 
-func giveQuiz(quiz []problem) (correctAnswers, quizLength int) {
-	quizLength = len(quiz)
+func giveQuiz(quiz []problem, timeLimit int) () {
+	timer := time.NewTimer(time.Duration(timeLimit) * time.Second)
+	quizLength := len(quiz)
+	correctAnswers := 0
 
-	// timer := time.NewTimer(3 * time.Second)
-		for k, v := range quiz {
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Println("Question", k, ":")
-			fmt.Println(v.question)
-			fmt.Println("Type your answer below: ")
-			text, _ := reader.ReadString('\n')
-			fmt.Print("You just answered: ")
-			fmt.Println(text)
-			fmt.Print("The actual answer is: ")
-			fmt.Println(v.answer)
-			fmt.Println("")
-			if (strings.TrimRight(text, "\n") == v.answer) {
+	problemloop:
+	for i, p := range quiz {
+		fmt.Printf("Question #%d: %s = ", i+1, p.question)
+		answerChan := make(chan string)
+		go func() {
+			var answer string
+			fmt.Scanf("%s\n", &answer)
+			answerChan <- answer
+		}()
+
+		select {
+		case <-timer.C:
+			fmt.Println()
+			break problemloop
+		case answer := <-answerChan:
+			if answer == p.answer {
 				correctAnswers++
 			}
 		}
-	return
+	}
+	fmt.Println(`You got`, correctAnswers, `questions out of`, quizLength, `correct.`)
 }
